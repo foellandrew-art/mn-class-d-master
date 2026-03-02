@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <title>MN Teen Driver Hub: GDL & Safety Explorer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc; /* Light slate background */
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Mandatory Chart Container Styling */
+    .chart-container {
+      position: relative;
+      width: 100%;
+      max-width: 800px; /* Prevents excessive width */
+      margin-left: auto;
+      margin-right: auto;
+      height: 40vh; /* Responsive base height */
+      min-height: 300px;
+      max-height: 450px; /* Strict vertical constraint */
+      overflow: hidden; /* Prevents canvas overflow */
+    }
+
+    /* Smooth section transitions */
+    .view-section {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+    }
+    .view-section.active {
+      display: block;
+      opacity: 1;
+      animation: slideUp 0.5s ease-out forwards;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Custom scrollbar for inner elements if needed */
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Unicode Icon Styling */
+    .u-icon { font-style: normal; display: inline-block; line-height: 1; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Navigation -->
+  <nav class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center">
+          <span class="text-2xl mr-2 u-icon">🚙</span>
+          <span class="font-bold text-xl text-blue-800 tracking-tight">MN Teen Driver Hub</span>
+        </div>
+        <!-- Desktop Nav -->
+        <div class="hidden md:flex space-x-1 sm:space-x-4 items-center" id="desktop-nav">
+          <button data-target="dashboard" class="nav-btn px-3 py-2 rounded-md text-sm font-medium text-blue-700 bg-blue-50 transition-colors">Overview</button>
+          <button data-target="gdl-journey" class="nav-btn px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">The GDL Journey</button>
+          <button data-target="rules-physics" class="nav-btn px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">Rules &amp; Physics</button>
+          <button data-target="hazards" class="nav-btn px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">Hazards &amp; DUI</button>
+        </div>
+        <!-- Mobile menu button -->
+        <div class="flex items-center md:hidden">
+          <button id="mobile-menu-btn" class="text-slate-600 hover:text-blue-600 focus:outline-none text-2xl">
+            ☰
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Mobile Nav -->
+    <div id="mobile-nav" class="md:hidden hidden bg-white border-t border-slate-100 shadow-md absolute w-full">
+      <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 flex flex-col">
+        <button data-target="dashboard" class="nav-btn block px-3 py-2 rounded-md text-base font-medium text-blue-700 bg-blue-50 text-left">Overview</button>
+        <button data-target="gdl-journey" class="nav-btn block px-3 py-2 rounded-md text-base font-medium text-slate-600 hover:bg-slate-50 text-left">The GDL Journey</button>
+        <button data-target="rules-physics" class="nav-btn block px-3 py-2 rounded-md text-base font-medium text-slate-600 hover:bg-slate-50 text-left">Rules &amp; Physics</button>
+        <button data-target="hazards" class="nav-btn block px-3 py-2 rounded-md text-base font-medium text-slate-600 hover:bg-slate-50 text-left">Hazards &amp; DUI</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main class="flex-grow max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+
+    <!-- ================= SECTION: DASHBOARD ================= -->
+    <section id="dashboard" class="view-section active">
+      <div class="mb-8">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Understanding the Road Ahead</h1>
+        <p class="text-lg text-slate-600 leading-relaxed max-w-4xl">
+          Welcome to the interactive companion for the Minnesota Class D Driver's Manual and Parent's Supervised Driving Program.
+          This hub transforms dense regulatory text and safety protocols into an explorable format. Before diving into the laws,
+          it is critical to understand <em>why</em> these strict systems exist. The data below highlights the primary factors
+          contributing to teen driving incidents, setting the context for the rules we must follow.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <!-- Chart Block -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h2 class="text-xl font-bold text-slate-800 mb-2 border-b pb-2">Common Teen Crash Factors</h2>
+          <p class="text-sm text-slate-500 mb-4">Data representing primary contributors to novice driver incidents.</p>
+          <div class="chart-container">
+            <canvas id="crashFactorsChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Context Block -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6 h-full">
+          <div>
+            <h3 class="text-lg font-bold text-blue-800 flex items-center"><span class="u-icon mr-2 text-xl">⚠️</span> The Risk Profile</h3>
+            <p class="mt-2 text-slate-600 text-sm leading-relaxed">
+              Novice drivers face significantly higher crash risks during their first year of licensure. The lack of experience in
+              hazard anticipation, combined with distractions (especially passengers and phones), leads to critical errors in judgment.
+            </p>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-blue-800 flex items-center"><span class="u-icon mr-2 text-xl">🛡️</span> The Solution: GDL &amp; Supervision</h3>
+            <p class="mt-2 text-slate-600 text-sm leading-relaxed">
+              Minnesota's Graduated Driver Licensing (GDL) system addresses these specific risks by legally mandating <strong>50 hours of supervised practice</strong>
+              (15 at night) and restricting high-risk scenarios (late-night driving, peer passengers) during the Provisional phase.
+            </p>
+          </div>
+          <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <p class="text-sm text-blue-800 font-semibold">
+              "Even after your teen is licensed, use your time driving with them to instill habits of good judgment, accurate hazard anticipation, and smart decision-making."
+              <br /><span class="text-xs font-normal text-blue-600">— Parent's Supervised Driving Program</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SECTION: THE GDL JOURNEY ================= -->
+    <section id="gdl-journey" class="view-section">
+      <div class="mb-8">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">The Graduated Licensing System</h1>
+        <p class="text-lg text-slate-600 leading-relaxed max-w-4xl">
+          Minnesota law mandates a step-by-step approach to earning full driving privileges. This section breaks down the
+          statutory requirements for the Instruction Permit, the Provisional License, and the transition to a Full Class D License.
+          Interact with the timeline below to explore the specific rules, restrictions, and parent responsibilities at each stage.
+        </p>
+      </div>
+
+      <!-- Interactive CSS Timeline -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 relative">
+          <!-- Connecting Line (Desktop) -->
+          <div class="hidden md:block absolute top-1/2 left-0 w-full h-1 bg-slate-200 -z-10 transform -translate-y-1/2"></div>
+
+          <!-- Phase 1 -->
+          <button class="gdl-step w-full md:w-1/3 bg-slate-50 border-2 border-blue-500 rounded-xl p-4 text-center cursor-pointer hover:bg-blue-50 transition-colors relative z-10" data-phase="permit">
+            <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">1</div>
+            <h3 class="font-bold text-slate-800">Instruction Permit</h3>
+            <p class="text-xs text-slate-500 mt-1">Age 15+</p>
+          </button>
+          <!-- Phase 2 -->
+          <button class="gdl-step w-full md:w-1/3 bg-slate-50 border-2 border-transparent hover:border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:bg-slate-100 transition-colors relative z-10" data-phase="provisional">
+            <div class="w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">2</div>
+            <h3 class="font-bold text-slate-800">Provisional License</h3>
+            <p class="text-xs text-slate-500 mt-1">Age 16+</p>
+          </button>
+          <!-- Phase 3 -->
+          <button class="gdl-step w-full md:w-1/3 bg-slate-50 border-2 border-transparent hover:border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:bg-slate-100 transition-colors relative z-10" data-phase="full">
+            <div class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">3</div>
+            <h3 class="font-bold text-slate-800">Class D License</h3>
+            <p class="text-xs text-slate-500 mt-1">Age 18+ (or 12mo clean)</p>
+          </button>
+        </div>
+
+        <!-- Dynamic Content Area -->
+        <div id="gdl-content" class="mt-8 p-6 bg-slate-50 rounded-xl border border-slate-200 min-h-[250px]">
+          <!-- Default content loaded via JS -->
+        </div>
+      </div>
+
+      <!-- Vanessa's Law Callout -->
+      <div class="bg-amber-50 border-l-4 border-amber-500 p-6 rounded-r-xl">
+        <h3 class="text-lg font-bold text-amber-900 flex items-center"><span class="u-icon mr-2">⚖️</span> Vanessa's Law (Minn. Stat. § 171.05)</h3>
+        <p class="mt-2 text-sm text-amber-800 leading-relaxed">
+          A strict penalty for unlicensed teen drivers. If an unlicensed teen receives a crash-related moving violation or an alcohol/controlled substance violation, they <strong>cannot be given a license, instruction permit, or provisional license until age 18.</strong> At 18, they must pass the knowledge test, fulfill reinstatement requirements, and hold a permit for six months.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= SECTION: RULES & PHYSICS ================= -->
+    <section id="rules-physics" class="view-section">
+      <div class="mb-8">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Traffic Laws & Physical Realities</h1>
+        <p class="text-lg text-slate-600 leading-relaxed max-w-4xl">
+          Knowing the speed limit is only part of safe driving. This section explores the relationship between speed, human reaction times,
+          and vehicle physics. Furthermore, it clarifies complex right-of-way scenarios, including Minnesota's specific implementation of
+          the Zipper Merge and the Basic Speed Law.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- Chart Area (Spans 7 cols) -->
+        <div class="lg:col-span-7 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h2 class="text-xl font-bold text-slate-800 mb-1">The Physics of Stopping</h2>
+          <p class="text-sm text-slate-500 mb-4">Perception, Reaction, and Braking Distance increase exponentially with speed.</p>
+          <div class="chart-container">
+            <canvas id="stoppingDistanceChart"></canvas>
+          </div>
+          <p class="text-xs text-slate-400 mt-4 text-center">*Distances are approximate based on average reaction times and dry pavement.</p>
+        </div>
+
+        <!-- Rules Area (Spans 5 cols) -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <h3 class="font-bold text-slate-800 text-lg flex items-center"><span class="u-icon mr-2 text-xl">⏱️</span> The Basic Speed Law</h3>
+            <p class="text-sm text-slate-600 mt-2">
+              Statutory limits (10mph alleys, 30mph urban, 55mph rural) apply when signs are absent. However, the Basic Speed Law dictates you must never drive faster than is <em>reasonable under existing conditions</em>. 55mph in a blizzard is illegal.
+            </p>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <h3 class="font-bold text-slate-800 text-lg flex items-center"><span class="u-icon mr-2 text-xl">🔀</span> The Zipper Merge</h3>
+            <p class="text-sm text-slate-600 mt-2">
+              When a lane is closed ahead, stay in your current lane up to the point of merge. Then take turns with the other lane (1 to 1). Merging early causes unpredictable behavior and worsens traffic backups.
+            </p>
+            <button id="btn-zipper" class="mt-3 text-sm font-semibold text-blue-600 hover:text-blue-800 underline">Show Scenario</button>
+            <div id="scenario-zipper" class="hidden mt-3 p-3 bg-blue-50 text-blue-800 text-sm rounded border border-blue-100">
+              <strong>Scenario:</strong> Sign says "Right Lane Ends 1 Mile." <br />
+              <strong>Action:</strong> Stay in the right lane. Drive to the merge point. Take turns. Do not force yourself into the left lane a mile early.
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <h3 class="font-bold text-slate-800 text-lg flex items-center"><span class="u-icon mr-2 text-xl">🛑</span> Uncontrolled Intersections</h3>
+            <p class="text-sm text-slate-600 mt-2">
+              If two vehicles arrive at an intersection without signs/signals at the same time, the driver on the left must yield to the driver on the right.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SECTION: HAZARDS & DUI ================= -->
+    <section id="hazards" class="view-section">
+      <div class="mb-8">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Hazards, Sharing the Road &amp; Impairment</h1>
+        <p class="text-lg text-slate-600 leading-relaxed max-w-4xl">
+          Driver education emphasizes protecting vulnerable road users and understanding the severe legal consequences of impaired driving.
+          This section visualizes the physiological impacts of alcohol and outlines the critical laws regarding school buses, commercial trucks,
+          and adverse weather conditions like hydroplaning.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- BAC Chart -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h2 class="text-xl font-bold text-slate-800 mb-1">Blood Alcohol Concentration (BAC) Effects</h2>
+          <p class="text-sm text-slate-500 mb-4">Alcohol impairs judgment long before physical coordination is lost.</p>
+          <div class="chart-container">
+            <canvas id="bacChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Sharing the road concepts -->
+        <div class="space-y-4">
+          <!-- Impairment text -->
+          <div class="bg-red-50 p-5 rounded-2xl border border-red-100">
+            <h3 class="font-bold text-red-900 text-lg">DWI &amp; Not a Drop Law</h3>
+            <p class="text-sm text-red-800 mt-2">
+              The legal limit for 21+ is <strong>0.08</strong>. However, Minnesota enforces a <strong>"Not a Drop"</strong> policy for drivers under 21. Any detectable amount of alcohol results in license suspension. <em>Implied Consent</em> means by driving, you agree to breath/blood testing; refusal yields a 1-year revocation.
+            </p>
+          </div>
+
+          <!-- Trucks -->
+          <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 text-white">
+            <h3 class="font-bold text-lg flex items-center"><span class="u-icon mr-2">🚛</span> Commercial Vehicles &amp; No-Zones</h3>
+            <p class="text-sm text-slate-300 mt-2">
+              Large trucks have massive blind spots on all four sides. <strong>Rule of thumb:</strong> If you cannot see the driver's face in their side mirror, they cannot see you. They also require wide turning radiuses; never pass a turning truck on the right.
+            </p>
+          </div>
+
+          <!-- Weather / Hydroplaning -->
+          <div class="bg-blue-50 p-5 rounded-2xl border border-blue-100">
+            <h3 class="font-bold text-blue-900 text-lg flex items-center"><span class="u-icon mr-2">🌧️</span> Hydroplaning (Minn. Stat. § 169.13)</h3>
+            <p class="text-sm text-blue-800 mt-2">
+              Water can collect under tires causing loss of contact with the road at speeds as low as 35 mph. <strong>Action:</strong> Take foot off the gas. Do NOT brake hard. Keep steering wheel straight.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- School Bus Law Full Width -->
+      <div class="bg-amber-100 p-6 rounded-2xl border border-amber-200 flex flex-col md:flex-row items-center gap-6">
+        <div class="text-5xl u-icon">🚌</div>
+        <div>
+          <h3 class="text-xl font-black text-amber-900 mb-2">School Bus Stop Law</h3>
+          <p class="text-sm text-amber-800 font-medium">
+            When a school bus is stopped with its red lights flashing and stop arm extended, you MUST stop your vehicle at least <strong>20 feet</strong> away from the bus. This applies to both following and opposing traffic, <em>unless</em> you are on the opposite side of a physically separated roadway (like a concrete median). Violations are heavily penalized.
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // ==========================================
+    // APPLICATION STATE & DATA
+    // ==========================================
+
+    // GDL Content Data
+    const gdlData = {
+      permit: {
+        title: "Step 1: Instruction Permit",
+        rules: [
+          "Minimum age: 15 years old.",
+          "Must be enrolled in approved driver education.",
+          "Pass vision and knowledge tests.",
+          "Valid for two years.",
+          "Must be accompanied by a licensed driver 21+ in the front passenger seat."
+        ],
+        parentRole: "Supervise at least 50 hours of practice driving (15 hours at night). Complete a supervised driving log."
+      },
+      provisional: {
+        title: "Step 2: Provisional License",
+        rules: [
+          "Minimum age: 16 years old.",
+          "Must have held permit for 6 months (no moving/alcohol violations).",
+          "Pass the road skills test.",
+          "Passenger restriction: Only one passenger under 20 (non-family) for the first 6 months.",
+          "Night restriction: No driving between Midnight and 5 AM (exceptions for work/school)."
+        ],
+        parentRole: "Continue to enforce rules. The teen is legally driving alone, but parental guidelines should remain strict regarding weather and passengers."
+      },
+      full: {
+        title: "Step 3: Full Class D License",
+        rules: [
+          "Minimum age: 18 years old, OR 12 months with a provisional license and no violations.",
+          "No passenger restrictions.",
+          "No nighttime driving restrictions.",
+          "Can operate any single vehicle under 26,000 lbs GVWR."
+        ],
+        parentRole: "Transition to adult responsibility. Ensure the teen understands insurance requirements and vehicle maintenance."
+      }
+    };
+
+    // Chart Instances
+    let charts = {};
+
+    // ==========================================
+    // INITIALIZATION & EVENT LISTENERS
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', () => {
+      initNavigation();
+      initGDLInteractions();
+      initScenarioToggles();
+
+      // Render initial charts
+      renderCrashChart();
+
+      // Setup default GDL view
+      updateGDLContent('permit');
+    });
+
+    // ==========================================
+    // NAVIGATION LOGIC
+    // ==========================================
+    function initNavigation() {
+      const buttons = document.querySelectorAll('.nav-btn');
+      const sections = document.querySelectorAll('.view-section');
+      const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+      const mobileNav = document.getElementById('mobile-nav');
+
+      // Mobile menu toggle
+      mobileMenuBtn.addEventListener('click', () => {
+        mobileNav.classList.toggle('hidden');
+      });
+
+      buttons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const targetId = e.target.getAttribute('data-target');
+
+          // Update Button Styles
+          buttons.forEach(b => {
+            b.classList.remove('text-blue-700', 'bg-blue-50');
+            b.classList.add('text-slate-600');
+          });
+
+          // Highlight active buttons (desktop and mobile)
+          document.querySelectorAll(`.nav-btn[data-target="${targetId}"]`).forEach(activeBtn => {
+            activeBtn.classList.remove('text-slate-600');
+            activeBtn.classList.add('text-blue-700', 'bg-blue-50');
+          });
+
+          // Switch Sections
+          sections.forEach(sec => {
+            sec.classList.remove('active');
+            if (sec.id === targetId) {
+              sec.classList.add('active');
+              // Trigger chart rendering based on section
+              handleSectionCharts(targetId);
+            }
+          });
+
+          // Close mobile menu on selection
+          mobileNav.classList.add('hidden');
+        });
+      });
+    }
+
+    // ==========================================
+    // INTERACTIVE ELEMENTS LOGIC
+    // ==========================================
+    function initGDLInteractions() {
+      const steps = document.querySelectorAll('.gdl-step');
+      steps.forEach(step => {
+        step.addEventListener('click', () => {
+          // Reset styling
+          steps.forEach(s => {
+            s.classList.remove('border-blue-500');
+            s.classList.add('border-transparent');
+          });
+          // Apply active style
+          step.classList.remove('border-transparent');
+          step.classList.add('border-blue-500');
+
+          const phase = step.getAttribute('data-phase');
+          updateGDLContent(phase);
+        });
+      });
+    }
+
+    function updateGDLContent(phase) {
+      const contentDiv = document.getElementById('gdl-content');
+      const data = gdlData[phase];
+
+      let rulesHtml = data.rules.map(rule => `<li class="flex items-start"><span class="text-blue-500 mr-2 u-icon">✓</span> <span>${rule}</span></li>`).join('');
+
+      contentDiv.innerHTML = `
+        <div class="animate-slide-up">
+          <h3 class="text-2xl font-bold text-slate-800 mb-4">${data.title}</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Legal Requirements</h4>
+              <ul class="space-y-2 text-slate-700 text-sm">${rulesHtml}</ul>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+              <h4 class="text-sm font-bold text-blue-600 uppercase tracking-wider mb-2 flex items-center"><span class="u-icon mr-1">👨‍👩‍👧</span> Parent/Guardian Role</h4>
+              <p class="text-sm text-slate-600 leading-relaxed">${data.parentRole}</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function initScenarioToggles() {
+      const btn = document.getElementById('btn-zipper');
+      const scenario = document.getElementById('scenario-zipper');
+
+      btn.addEventListener('click', () => {
+        if (scenario.classList.contains('hidden')) {
+          scenario.classList.remove('hidden');
+          btn.textContent = "Hide Scenario";
+        } else {
+          scenario.classList.add('hidden');
+          btn.textContent = "Show Scenario";
+        }
+      });
+    }
+
+    // ==========================================
+    // CHART.JS RENDERING LOGIC
+    // ==========================================
+
+    function handleSectionCharts(sectionId) {
+      if (sectionId === 'dashboard') renderCrashChart();
+      if (sectionId === 'rules-physics') renderStoppingChart();
+      if (sectionId === 'hazards') renderBACChart();
+    }
+
+    function renderCrashChart() {
+      if (charts.crash) return; // already rendered
+      const ctx = document.getElementById('crashFactorsChart').getContext('2d');
+      charts.crash = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Distraction/Inattention', 'Speeding', 'Following Too Close', 'Failure to Yield', 'Other/Weather'],
+          datasets: [{
+            data: [30, 20, 15, 15, 20],
+            backgroundColor: ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#cbd5e1'],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15, font: { family: 'Inter', size: 12 } } },
+            tooltip: {
+              callbacks: {
+                label: function(context) { return ` ${context.label}: ${context.parsed}% of teen crashes`; }
+              }
+            }
+          },
+          cutout: '65%'
+        }
+      });
+    }
+
+    function renderStoppingChart() {
+      if (charts.stopping) return;
+      const ctx = document.getElementById('stoppingDistanceChart').getContext('2d');
+
+      // Standard approximate data for perception/reaction (1.5s) + braking on dry pavement
+      const speeds = ['30 mph', '40 mph', '50 mph', '60 mph'];
+      const reactionDist = [66, 88, 110, 132]; // feet
+      const brakingDist = [45, 80, 125, 180]; // feet
+
+      charts.stopping = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: speeds,
+          datasets: [
+            { label: 'Reaction Distance (ft)', data: reactionDist, backgroundColor: '#94a3b8' },
+            { label: 'Braking Distance (ft)', data: brakingDist, backgroundColor: '#ef4444' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          scales: {
+            x: { stacked: true, title: { display: true, text: 'Total Stopping Distance (Feet)' } },
+            y: { stacked: true }
+          },
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.parsed.x} ft`;
+                },
+                footer: function(tooltipItems) {
+                  let total = 0;
+                  tooltipItems.forEach(function(tooltipItem) { total += tooltipItem.parsed.x; });
+                  return `Total Distance: ${total} ft`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderBACChart() {
+      if (charts.bac) return;
+      const ctx = document.getElementById('bacChart').getContext('2d');
+
+      charts.bac = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['.02 BAC', '.05 BAC', '.08 BAC (DWI LIMIT)', '.10 BAC'],
+          datasets: [{
+            label: 'Impairment Level',
+            data: [2, 5, 8, 10],
+            backgroundColor: ['#fde68a', '#f59e0b', '#ef4444', '#991b1b']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { display: false, max: 12 },
+            x: { grid: { display: false } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: function(context) { return context[0].label; },
+                label: function(context) {
+                  const insights = [
+                    "Visual functions decline. Multitasking becomes difficult.",
+                    "Coordination reduced. Difficulty steering.",
+                    "LEGAL LIMIT. Concentration, speed control, perception severely impaired.",
+                    "Clear deterioration of reaction time and control."
+                  ];
+                  return insights[context.dataIndex];
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
